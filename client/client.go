@@ -1,22 +1,26 @@
 package client
 
 import (
-	"bytes"
 	"crypto/tls"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/http3"
+	"github.com/lucas-clemente/quic-go/logging"
 	log "github.com/sirupsen/logrus"
 	"http-perf-go/common"
 	"io"
 	"net/http"
 )
 
-type ClientConfig struct {
-	Url         string
+// TODO 0rtt
+// TODO parallel downloads
+// TODO page requisites
+type Config struct {
+	Urls        []string
 	TLSCertFile string
+	Qlog        bool
 }
 
-func Run(config ClientConfig) error {
+func Run(config Config) error {
 	certPool, err := common.NewCertPoolWithCert(config.TLSCertFile)
 	if err != nil {
 		return err
@@ -26,7 +30,17 @@ func Run(config ClientConfig) error {
 		RootCAs: certPool,
 	}
 
-	quicConf := &quic.Config{}
+	tracers := make([]logging.Tracer, 0)
+
+	if config.Qlog {
+		tracers = append(tracers, common.NewQlogTracer("client", func(filename string) {
+			log.Infof("created qlog file: %s", filename)
+		}))
+	}
+
+	quicConf := &quic.Config{
+		Tracer: logging.NewMultiplexedTracer(tracers...),
+	}
 
 	roundTripper := &http3.RoundTripper{
 		TLSClientConfig: tlsConf,
@@ -38,19 +52,20 @@ func Run(config ClientConfig) error {
 		Transport: roundTripper,
 	}
 
-	rsp, err := hclient.Get(config.Url)
-	if err != nil {
-		return err
+	//TODO support parallel downloads
+	for _, url := range config.Urls {
+		log.Infof("GET %s", url)
+		rsp, err := hclient.Get(url)
+		if err != nil {
+			return err
+		}
+
+		received, err := io.Copy(common.DiscardWriter{}, rsp.Body)
+		if err != nil {
+			return err
+		}
+		log.Infof("%s %s %d %d byte", url, rsp.Proto, rsp.StatusCode, received)
 	}
-
-	body := &bytes.Buffer{}
-
-	_, err = io.Copy(body, rsp.Body)
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Response Body: %s", body.Bytes())
 
 	return nil
 }

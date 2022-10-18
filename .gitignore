@@ -1,1 +1,4 @@
+*.qlog
 /.idea
+/http-perf-go
+/www

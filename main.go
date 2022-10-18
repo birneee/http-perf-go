@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"http-perf-go/client"
@@ -12,7 +13,7 @@ const defaultTLSCertificateFile = "./server.crt"
 const defaultTLSKeyFile = "./server.key"
 const defaultServeDir = "./www"
 const defaultServerAddr = "0.0.0.0:8080"
-const defaultClientAddr = "https://127.0.0.1:8080"
+
 const timeFormatRFC3339Micro = "2006-01-02T15:04:05.999Z07:00"
 
 func main() {
@@ -25,24 +26,29 @@ func main() {
 		Usage: "A performance measurement tool for HTTP/3",
 		Commands: []*cli.Command{
 			{
-				Name:  "client",
-				Usage: "run in client mode",
+				Name:      "client",
+				Usage:     "run in client mode",
+				ArgsUsage: "[URL...]",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:  "url",
-						Usage: "file to download",
-						Value: defaultClientAddr,
-					},
 					&cli.StringFlag{
 						Name:  "tls-cert",
 						Usage: "TLS certificate file to use",
 						Value: defaultTLSCertificateFile,
 					},
+					&cli.BoolFlag{
+						Name:  "qlog",
+						Usage: "create qlog file",
+						Value: false,
+					},
 				},
 				Action: func(c *cli.Context) error {
-					return client.Run(client.ClientConfig{
-						Url:         c.String("url"),
+					if c.Args().Len() == 0 {
+						return fmt.Errorf("missing URL")
+					}
+					return client.Run(client.Config{
+						Urls:        c.Args().Slice(),
 						TLSCertFile: c.String("tls-cert"),
+						Qlog:        c.Bool("qlog"),
 					})
 				},
 			},
@@ -70,13 +76,19 @@ func main() {
 						Usage: "TLS key file to use",
 						Value: defaultTLSKeyFile,
 					},
+					&cli.BoolFlag{
+						Name:  "qlog",
+						Usage: "create qlog file",
+						Value: false,
+					},
 				},
 				Action: func(c *cli.Context) error {
-					return server.Run(server.ServerConfig{
+					return server.Run(server.Config{
 						Addr:        c.String("addr"),
 						ServeDir:    c.String("dir"),
 						TlsCertFile: c.String("tls-cert"),
 						TlsKeyFile:  c.String("tls-key"),
+						Qlog:        c.Bool("qlog"),
 					})
 				},
 			},
@@ -85,6 +97,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		panic(err)
+		log.Errorf("%v", err)
+		os.Exit(1)
 	}
 }
