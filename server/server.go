@@ -2,7 +2,6 @@ package server
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/logging"
 	log "github.com/sirupsen/logrus"
@@ -34,15 +33,29 @@ func Run(config Config) error {
 	}
 	defer udpConn.Close()
 
+	tcpAddr, err := net.ResolveTCPAddr("tcp", config.Addr)
+	if err != nil {
+		return err
+	}
+	tcpConn, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		return err
+	}
+	defer tcpConn.Close()
+
 	log.Infof("listening on %s, serving %s", udpAddr, config.ServeDir)
 
 	tlsCert, err := tls.LoadX509KeyPair(config.TlsCertFile, config.TlsKeyFile)
 	if err != nil {
 		return err
 	}
-	tlsConf := http3.ConfigureTLSConfig(&tls.Config{
+
+	tlsConf := &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
-	})
+	}
+
+	tlsConn := tls.NewListener(tcpConn, tlsConf)
+	defer tlsConn.Close()
 
 	tracers := make([]logging.Tracer, 0)
 
@@ -56,15 +69,37 @@ func Run(config Config) error {
 		Tracer: logging.NewMultiplexedTracer(tracers...),
 	}
 
-	server := http3.Server{
+	// HTTP/3 server
+	quicServer := http3.Server{
 		Handler:    http.FileServer(http.Dir(config.ServeDir)),
 		Addr:       config.Addr,
 		QuicConfig: quicConf,
 		TLSConfig:  tlsConf,
 	}
-	err = server.Serve(udpConn)
-	if err != nil {
-		fmt.Println(err)
+
+	// HTTP/1.1 server
+	tcpServer := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			quicServer.SetQuicHeaders(w.Header())
+			quicServer.Handler.ServeHTTP(w, r)
+		}),
 	}
-	return nil
+
+	tErr := make(chan error)
+	qErr := make(chan error)
+	go func() {
+		tErr <- tcpServer.Serve(tlsConn)
+	}()
+	go func() {
+		qErr <- quicServer.Serve(udpConn)
+	}()
+
+	select {
+	case err := <-tErr:
+		quicServer.Close()
+		return err
+	case err := <-qErr:
+		tcpServer.Close()
+		return err
+	}
 }
