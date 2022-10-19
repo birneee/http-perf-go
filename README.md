@@ -11,8 +11,8 @@ INFO[2022-10-18T22:57:04.587+02:00] listening on 0.0.0.0:8080, serving ./www
 
 ```bash
 $ http-perf-go client https://localhost:8080/
-INFO[2022-10-18T22:57:07.564+02:00] GET https://localhost:8080/                  
-INFO[2022-10-18T22:57:07.571+02:00] https://localhost:8080/ HTTP/3.0 200 5 byte
+INFO[2022-10-18T22:57:07.564+02:00] GET https://localhost:8080/
+INFO[2022-10-18T22:57:07.571+02:00] got https://localhost:8080/ HTTP/3.0 200, 5 byte, 0.003580 s
 ```
 
 ## Build
