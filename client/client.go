@@ -9,6 +9,7 @@ import (
 	"http-perf-go/common"
 	"io"
 	"net/http"
+	"time"
 )
 
 // TODO 0rtt
@@ -55,6 +56,7 @@ func Run(config Config) error {
 	//TODO support parallel downloads
 	for _, url := range config.Urls {
 		log.Infof("GET %s", url)
+		start := time.Now()
 		rsp, err := hclient.Get(url)
 		if err != nil {
 			return err
@@ -64,7 +66,8 @@ func Run(config Config) error {
 		if err != nil {
 			return err
 		}
-		log.Infof("%s %s %d %d byte", url, rsp.Proto, rsp.StatusCode, received)
+		stop := time.Now()
+		log.Infof("got %s %s %d, %d byte, %f s", url, rsp.Proto, rsp.StatusCode, received, stop.Sub(start).Seconds())
 	}
 
 	return nil
