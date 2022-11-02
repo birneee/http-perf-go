@@ -2,8 +2,13 @@ module http-perf-go
 
 go 1.19
 
+replace (
+	github.com/lucas-clemente/quic-go => github.com/birneee/quic-go v0.29.0
+	github.com/marten-seemann/qtls-go1-19 => github.com/birneee/qtls-go1-19 v0.1.0
+)
+
 require (
-	github.com/lucas-clemente/quic-go v0.29.2
+	github.com/lucas-clemente/quic-go v0.30.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.3.0
 )
