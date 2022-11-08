@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
+	"github.com/lucas-clemente/quic-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"http-perf-go/client"
+	"http-perf-go/internal"
 	"http-perf-go/server"
 	"os"
 )
@@ -40,15 +43,47 @@ func main() {
 						Usage: "create qlog file",
 						Value: false,
 					},
+					&cli.StringFlag{
+						Name:  "proxy",
+						Usage: "the proxy to use, in the form \"host:port\", default port 18081 if not specified",
+					},
+					&cli.StringFlag{
+						Name:  "tls-proxy-cert",
+						Usage: "certificate file to trust the proxy",
+					}, &cli.BoolFlag{
+						Name:    "page-requisites",
+						Aliases: []string{"p"},
+						Usage:   "This option causes Wget to download all the files that are necessary to properly display a given HTML page.  This includes such things as inlined images, sounds, and referenced stylesheets.",
+						Value:   false,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
 						return fmt.Errorf("missing URL")
 					}
+					var proxyConf *quic.ProxyConfig
+					if c.IsSet("proxy") {
+						proxyConf = &quic.ProxyConfig{}
+						proxyAddr, err := internal.ParseResolveHost(c.String("proxy"), quic.DefaultHQUICProxyControlPort)
+						if err != nil {
+							return fmt.Errorf("failed to resolve proxy address: %w", err)
+						}
+						proxyConf.Addr = proxyAddr.String()
+						if c.String("tls-proxy-cert") != "" {
+							proxyConf.TlsConf = &tls.Config{}
+							certPool, err := internal.NewCertPoolWithCert(c.String("tls-proxy-cert"))
+							if err != nil {
+								return fmt.Errorf("failed to load proxy certificate: %w", err)
+							}
+							proxyConf.TlsConf.RootCAs = certPool
+						}
+					}
 					return client.Run(client.Config{
-						Urls:        c.Args().Slice(),
-						TLSCertFile: c.String("tls-cert"),
-						Qlog:        c.Bool("qlog"),
+						Urls:           c.Args().Slice(),
+						TLSCertFile:    c.String("tls-cert"),
+						Qlog:           c.Bool("qlog"),
+						ProxyConfig:    proxyConf,
+						PageRequisites: c.Bool("page-requisites"),
 					})
 				},
 			},

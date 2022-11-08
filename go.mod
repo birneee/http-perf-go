@@ -3,7 +3,7 @@ module http-perf-go
 go 1.19
 
 replace (
-	github.com/lucas-clemente/quic-go => github.com/birneee/quic-go v0.29.0
+	github.com/lucas-clemente/quic-go => github.com/birneee/quic-go v0.32.0
 	github.com/marten-seemann/qtls-go1-19 => github.com/birneee/qtls-go1-19 v0.1.0
 )
 
@@ -20,7 +20,6 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/marten-seemann/qpack v0.2.1 // indirect
-	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.4 // indirect
