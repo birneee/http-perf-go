@@ -83,7 +83,7 @@ func main() {
 						proxyConf.Addr = proxyAddr.String()
 						if c.String("tls-proxy-cert") != "" {
 							proxyConf.TlsConf = &tls.Config{}
-							certPool, err := internal.NewCertPoolWithCert(c.String("tls-proxy-cert"))
+							certPool, err := internal.SystemCertPoolWithAdditionalCert(c.String("tls-proxy-cert"))
 							if err != nil {
 								return fmt.Errorf("failed to load proxy certificate: %w", err)
 							}
@@ -92,12 +92,12 @@ func main() {
 					}
 
 					return client.Run(client.Config{
-						Urls:        urls,
-						TLSCertFile: c.String("tls-cert"),
-						Qlog:        c.Bool("qlog"),
+						Urls:             urls,
+						TLSCertFile:      c.String("tls-cert"),
+						Qlog:             c.Bool("qlog"),
 						PageRequisites:   c.Bool("page-requisites"),
 						ParallelRequests: c.Int("parallel"),
-						ProxyConfig:    proxyConf,
+						ProxyConfig:      proxyConf,
 					})
 				},
 			},

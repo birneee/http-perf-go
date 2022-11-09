@@ -25,7 +25,7 @@ type Config struct {
 	Qlog             bool
 	PageRequisites   bool
 	ParallelRequests int
-	ProxyConfig    *quic.ProxyConfig
+	ProxyConfig      *quic.ProxyConfig
 }
 
 // Run blocks until everything is downloaded
@@ -41,8 +41,16 @@ func Run(config Config) error {
 
 	tracers := make([]logging.Tracer, 0)
 
-	tracers = append(tracers, internal.NewMigrationTracer(func(addr net.Addr) {
-		log.Infof("migrated to %s", addr)
+	tracers = append(tracers, internal.NewEventTracer(internal.Handlers{
+		UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
+			log.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
+		},
+		StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
+			log.Infof("started QUIC connection %s", odcid.String())
+		},
+		ClosedConnection: func(odcid logging.ConnectionID, err error) {
+			log.Infof("closed QUIC connection %s", odcid.String())
+		},
 	}))
 
 	if config.Qlog {
