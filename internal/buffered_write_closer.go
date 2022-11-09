@@ -1,4 +1,4 @@
-package common
+package internal
 
 // source https://github.com/lucas-clemente/quic-go/blob/master/internal/utils/buffered_write_closer.go
 

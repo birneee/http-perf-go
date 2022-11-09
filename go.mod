@@ -6,14 +6,19 @@ require (
 	github.com/lucas-clemente/quic-go v0.29.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.3.0
+	github.com/birneee/webpage-requisites-go v0.0.0-20221108213025-f6df86e59ae2
+
 )
 
 require (
+	github.com/PuerkitoBio/goquery v1.8.0 // indirect
+	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/golang/mock v1.6.0 // indirect
+	github.com/gorilla/css v1.0.0 // indirect
 	github.com/marten-seemann/qpack v0.2.1 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.3 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect

@@ -5,7 +5,7 @@ import (
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/logging"
 	log "github.com/sirupsen/logrus"
-	"http-perf-go/common"
+	"http-perf-go/internal"
 	"net"
 	"net/http"
 )
@@ -60,7 +60,7 @@ func Run(config Config) error {
 	tracers := make([]logging.Tracer, 0)
 
 	if config.Qlog {
-		tracers = append(tracers, common.NewQlogTracer("server", func(filename string) {
+		tracers = append(tracers, internal.NewQlogTracer("server", func(filename string) {
 			log.Infof("created qlog file: %s", filename)
 		}))
 	}

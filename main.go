@@ -5,7 +5,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"http-perf-go/client"
+	"http-perf-go/internal"
 	"http-perf-go/server"
+	u "net/url"
 	"os"
 )
 
@@ -14,13 +16,8 @@ const defaultTLSKeyFile = "./server.key"
 const defaultServeDir = "./www"
 const defaultServerAddr = "0.0.0.0:8080"
 
-const timeFormatRFC3339Micro = "2006-01-02T15:04:05.999Z07:00"
-
 func main() {
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: timeFormatRFC3339Micro,
-	})
+	log.SetFormatter(internal.NewFormatter())
 	app := &cli.App{
 		Name:  "http-perf-go",
 		Usage: "A performance measurement tool for HTTP/3",
@@ -40,15 +37,36 @@ func main() {
 						Usage: "create qlog file",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:    "page-requisites",
+						Aliases: []string{"p"},
+						Usage:   "This option causes Wget to download all the files that are necessary to properly display a given HTML page.  This includes such things as inlined images, sounds, and referenced stylesheets.",
+						Value:   false,
+					},
+					&cli.UintFlag{
+						Name:  "parallel",
+						Usage: "Number of parallel requests to send",
+						Value: 10,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
 						return fmt.Errorf("missing URL")
 					}
+					var urls []*u.URL
+					for _, urlStr := range c.Args().Slice() {
+						url, err := u.ParseRequestURI(urlStr)
+						if err != nil {
+							return fmt.Errorf("invalid url %s: %v", urlStr, err)
+						}
+						urls = append(urls, url)
+					}
 					return client.Run(client.Config{
-						Urls:        c.Args().Slice(),
-						TLSCertFile: c.String("tls-cert"),
-						Qlog:        c.Bool("qlog"),
+						Urls:             urls,
+						TLSCertFile:      c.String("tls-cert"),
+						Qlog:             c.Bool("qlog"),
+						PageRequisites:   c.Bool("page-requisites"),
+						ParallelRequests: c.Int("parallel"),
 					})
 				},
 			},
