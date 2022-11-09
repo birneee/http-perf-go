@@ -26,6 +26,7 @@ type Config struct {
 	ParallelRequests int
 }
 
+// Run blocks until everything is downloaded
 func Run(config Config) error {
 	certPool, err := internal.SystemCertPoolWithAdditionalCert(config.TLSCertFile)
 	if err != nil {
@@ -60,13 +61,13 @@ func Run(config Config) error {
 
 	urlQueue := internal.NewDistinctChannel[u.URL](1024)
 
-	var pendingRequests int32 = 0    /* atomic */
+	pendingRequests := internal.NewCondHelper(0)
 	var totalReceivedBytes int64 = 0 /* atomic */
 
 	for _, url := range config.Urls {
 		distinct := urlQueue.Add(*url)
 		if distinct {
-			atomic.AddInt32(&pendingRequests, 1)
+			pendingRequests.UpdateState(func(s int) int { return s + 1 })
 		}
 	}
 
@@ -77,11 +78,11 @@ func Run(config Config) error {
 				receivedBytes, err := download(&url, config, hclient, func(url *u.URL) {
 					distinct := urlQueue.Add(*url)
 					if distinct {
-						atomic.AddInt32(&pendingRequests, 1)
+						pendingRequests.UpdateState(func(s int) int { return s + 1 })
 					}
 				})
 				atomic.AddInt64(&totalReceivedBytes, receivedBytes)
-				atomic.AddInt32(&pendingRequests, -1)
+				pendingRequests.UpdateState(func(s int) int { return s - 1 })
 				if err != nil {
 					log.Errorf("failed to download %s: %v", url.String(), err)
 				}
@@ -89,12 +90,8 @@ func Run(config Config) error {
 		}()
 	}
 
-	for {
-		time.Sleep(100 * time.Millisecond)
-		if atomic.LoadInt32(&pendingRequests) == 0 {
-			break
-		}
-	}
+	pendingRequests.Wait(func(s int) bool { return s == 0 })
+
 	log.Infof("total bytes received: %d B", atomic.LoadInt64(&totalReceivedBytes))
 
 	return nil
