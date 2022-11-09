@@ -9,6 +9,7 @@ import (
 	"http-perf-go/client"
 	"http-perf-go/internal"
 	"http-perf-go/server"
+	u "net/url"
 	"os"
 )
 
@@ -17,13 +18,8 @@ const defaultTLSKeyFile = "./server.key"
 const defaultServeDir = "./www"
 const defaultServerAddr = "0.0.0.0:8080"
 
-const timeFormatRFC3339Micro = "2006-01-02T15:04:05.999Z07:00"
-
 func main() {
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: timeFormatRFC3339Micro,
-	})
+	log.SetFormatter(internal.NewFormatter())
 	app := &cli.App{
 		Name:  "http-perf-go",
 		Usage: "A performance measurement tool for HTTP/3",
@@ -43,6 +39,17 @@ func main() {
 						Usage: "create qlog file",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:    "page-requisites",
+						Aliases: []string{"p"},
+						Usage:   "This option causes Wget to download all the files that are necessary to properly display a given HTML page.  This includes such things as inlined images, sounds, and referenced stylesheets.",
+						Value:   false,
+					},
+					&cli.UintFlag{
+						Name:  "parallel",
+						Usage: "Number of parallel requests to send",
+						Value: 10,
+					},
 					&cli.StringFlag{
 						Name:  "proxy",
 						Usage: "the proxy to use, in the form \"host:port\", default port 18081 if not specified",
@@ -50,17 +57,22 @@ func main() {
 					&cli.StringFlag{
 						Name:  "tls-proxy-cert",
 						Usage: "certificate file to trust the proxy",
-					}, &cli.BoolFlag{
-						Name:    "page-requisites",
-						Aliases: []string{"p"},
-						Usage:   "This option causes Wget to download all the files that are necessary to properly display a given HTML page.  This includes such things as inlined images, sounds, and referenced stylesheets.",
-						Value:   false,
 					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
 						return fmt.Errorf("missing URL")
 					}
+
+					var urls []*u.URL
+					for _, urlStr := range c.Args().Slice() {
+						url, err := u.ParseRequestURI(urlStr)
+						if err != nil {
+							return fmt.Errorf("invalid url %s: %v", urlStr, err)
+						}
+						urls = append(urls, url)
+					}
+
 					var proxyConf *quic.ProxyConfig
 					if c.IsSet("proxy") {
 						proxyConf = &quic.ProxyConfig{}
@@ -78,12 +90,14 @@ func main() {
 							proxyConf.TlsConf.RootCAs = certPool
 						}
 					}
+
 					return client.Run(client.Config{
-						Urls:           c.Args().Slice(),
-						TLSCertFile:    c.String("tls-cert"),
-						Qlog:           c.Bool("qlog"),
+						Urls:        urls,
+						TLSCertFile: c.String("tls-cert"),
+						Qlog:        c.Bool("qlog"),
+						PageRequisites:   c.Bool("page-requisites"),
+						ParallelRequests: c.Int("parallel"),
 						ProxyConfig:    proxyConf,
-						PageRequisites: c.Bool("page-requisites"),
 					})
 				},
 			},
