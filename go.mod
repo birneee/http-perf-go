@@ -8,10 +8,11 @@ replace (
 )
 
 require (
+	github.com/birneee/webpage-requisites-go v0.0.0-20221116193224-258025144a4a
 	github.com/lucas-clemente/quic-go v0.30.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.3.0
-	github.com/birneee/webpage-requisites-go v0.0.0-20221108213025-f6df86e59ae2
+	golang.org/x/exp v0.0.0-20221114191408-850992195362
 
 )
 
@@ -30,13 +31,11 @@ require (
 	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
-	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519 // indirect
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.10 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/crypto v0.1.0 // indirect
+	golang.org/x/mod v0.6.0 // indirect
+	golang.org/x/net v0.1.0 // indirect
+	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/tools v0.2.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )

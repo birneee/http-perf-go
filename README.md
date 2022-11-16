@@ -36,3 +36,30 @@ sysctl -w net.core.rmem_max=2500000
 ```bash
 openssl req -x509 -nodes -days 358000 -out server.crt -keyout server.key -config server.req
 ```
+
+## Comparison with wget
+
+```bash
+$ wget -pH -e robots=off -U "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36" --delete-after https://www.google.com 2>&1 | grep -oP 'https?://[^\s]+' | sort
+
+https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg
+https://ssl.gstatic.com/ui/v1/menu/checkmark2.png
+https://www.google.com/
+https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png
+https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png
+https://www.google.com/images/experiments/wavy-underline.png
+https://www.google.com/images/searchbox/desktop_searchbox_sprites318_hr.webp
+https://www.google.com/manifest?pwa=webhp
+```
+
+```bash
+$ http-perf-go client -p -U "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36" https://www.google.com 2>&1 | grep -oP '(?<=GET )(https?://[^\s]+)' | sort
+
+https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg
+https://ssl.gstatic.com/ui/v1/menu/checkmark2.png
+https://www.google.com
+https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png
+https://www.google.com/images/experiments/wavy-underline.png
+https://www.google.com/images/searchbox/desktop_searchbox_sprites318_hr.webp
+https://www.google.com/manifest?pwa=webhp
+```

@@ -13,10 +13,13 @@ import (
 	"os"
 )
 
-const defaultTLSCertificateFile = "./server.crt"
-const defaultTLSKeyFile = "./server.key"
-const defaultServeDir = "./www"
-const defaultServerAddr = "0.0.0.0:8080"
+const (
+	defaultTLSCertificateFile = "./server.crt"
+	defaultTLSKeyFile         = "./server.key"
+	defaultServeDir           = "./www"
+	defaultServerAddr         = "0.0.0.0:8080"
+	defaultUserAgent          = "http-perf-go"
+)
 
 func main() {
 	log.SetFormatter(internal.NewFormatter())
@@ -58,6 +61,12 @@ func main() {
 						Name:  "tls-proxy-cert",
 						Usage: "certificate file to trust the proxy",
 					},
+					&cli.StringFlag{
+						Name:    "user-agent",
+						Aliases: []string{"U"},
+						Usage:   "Identification of client to the HTTP server",
+						Value:   defaultUserAgent,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
@@ -98,6 +107,7 @@ func main() {
 						PageRequisites:   c.Bool("page-requisites"),
 						ParallelRequests: c.Int("parallel"),
 						ProxyConfig:      proxyConf,
+						UserAgent:        c.String("user-agent"),
 					})
 				},
 			},

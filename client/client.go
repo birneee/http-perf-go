@@ -26,6 +26,12 @@ type Config struct {
 	PageRequisites   bool
 	ParallelRequests int
 	ProxyConfig      *quic.ProxyConfig
+	UserAgent        string
+}
+
+type client struct {
+	config     *Config
+	httpClient *http.Client
 }
 
 // Run blocks until everything is downloaded
@@ -75,6 +81,11 @@ func Run(config Config) error {
 		Transport: roundTripper,
 	}
 
+	client := &client{
+		config:     &config,
+		httpClient: hclient,
+	}
+
 	urlQueue := internal.NewDistinctChannel[u.URL](1024)
 
 	pendingRequests := internal.NewCondHelper(0)
@@ -91,7 +102,7 @@ func Run(config Config) error {
 		go func() {
 			for {
 				url := urlQueue.Next()
-				receivedBytes, err := download(&url, config, hclient, func(url *u.URL) {
+				receivedBytes, err := client.download(&url, func(url *u.URL) {
 					distinct := urlQueue.Add(*url)
 					if distinct {
 						pendingRequests.UpdateState(func(s int) int { return s + 1 })
@@ -114,10 +125,15 @@ func Run(config Config) error {
 }
 
 // return received bytes
-func download(url *u.URL, config Config, hclient *http.Client, onFindRequisite func(*u.URL)) (int64, error) {
+func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, error) {
 	log.Infof("GET %s", url)
 	start := time.Now()
-	rsp, err := hclient.Get(url.String())
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("user-agent", c.config.UserAgent)
+	rsp, err := c.httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
@@ -129,7 +145,7 @@ func download(url *u.URL, config Config, hclient *http.Client, onFindRequisite f
 	var requisites []*u.URL
 	var stop time.Time
 
-	if config.PageRequisites && contentType == internal.MIME_TYPE_TEXT_HTML {
+	if c.config.PageRequisites && contentType == internal.MIME_TYPE_TEXT_HTML {
 		html, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return 0, err
@@ -140,7 +156,7 @@ func download(url *u.URL, config Config, hclient *http.Client, onFindRequisite f
 		if err != nil {
 			return 0, err
 		}
-	} else if config.PageRequisites && contentType == internal.MIME_TYPE_TEXT_CSS {
+	} else if c.config.PageRequisites && contentType == internal.MIME_TYPE_TEXT_CSS {
 		css, err := io.ReadAll(rsp.Body)
 		if err != nil {
 			return 0, err
