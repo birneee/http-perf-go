@@ -10,7 +10,6 @@ replace (
 require (
 	github.com/birneee/webpage-requisites-go v0.0.0-20221116193224-258025144a4a
 	github.com/lucas-clemente/quic-go v0.30.0
-	github.com/sirupsen/logrus v1.9.0
 	github.com/urfave/cli/v2 v2.3.0
 	golang.org/x/exp v0.0.0-20221114191408-850992195362
 

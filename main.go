@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/lucas-clemente/quic-go"
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 	"http-perf-go/client"
 	"http-perf-go/internal"
@@ -22,7 +21,6 @@ const (
 )
 
 func main() {
-	log.SetFormatter(internal.NewFormatter())
 	app := &cli.App{
 		Name:  "http-perf-go",
 		Usage: "A performance measurement tool for HTTP/3",
@@ -67,6 +65,11 @@ func main() {
 						Usage:   "Identification of client to the HTTP server",
 						Value:   defaultUserAgent,
 					},
+					&cli.StringFlag{
+						Name:  "log-prefix",
+						Usage: "the prefix of the command line output",
+						Value: "",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
@@ -108,6 +111,7 @@ func main() {
 						ParallelRequests: c.Int("parallel"),
 						ProxyConfig:      proxyConf,
 						UserAgent:        c.String("user-agent"),
+						Logger:           internal.NewHierarchicalLogger(c.String("log-prefix"), internal.NewFormatter()),
 					})
 				},
 			},
@@ -140,6 +144,11 @@ func main() {
 						Usage: "create qlog file",
 						Value: false,
 					},
+					&cli.StringFlag{
+						Name:  "log-prefix",
+						Usage: "the prefix of the command line output",
+						Value: "",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					return server.Run(server.Config{
@@ -148,6 +157,7 @@ func main() {
 						TlsCertFile: c.String("tls-cert"),
 						TlsKeyFile:  c.String("tls-key"),
 						Qlog:        c.Bool("qlog"),
+						Logger:      internal.NewHierarchicalLogger(c.String("log-prefix"), internal.NewFormatter()),
 					})
 				},
 			},
@@ -156,7 +166,8 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Errorf("%v", err)
+		logger := internal.NewHierarchicalLogger("", internal.NewFormatter())
+		logger.Errorf("%v", err)
 		os.Exit(1)
 	}
 }

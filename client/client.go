@@ -7,7 +7,6 @@ import (
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/http3"
 	"github.com/lucas-clemente/quic-go/logging"
-	log "github.com/sirupsen/logrus"
 	"http-perf-go/internal"
 	"io"
 	"net"
@@ -27,6 +26,7 @@ type Config struct {
 	ParallelRequests int
 	ProxyConfig      *quic.ProxyConfig
 	UserAgent        string
+	Logger           internal.HierarchicalLogger
 }
 
 type client struct {
@@ -49,19 +49,19 @@ func Run(config Config) error {
 
 	tracers = append(tracers, internal.NewEventTracer(internal.Handlers{
 		UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
-			log.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
+			config.Logger.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
 		},
 		StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
-			log.Infof("started QUIC connection %s", odcid.String())
+			config.Logger.Infof("started QUIC connection %s", odcid.String())
 		},
 		ClosedConnection: func(odcid logging.ConnectionID, err error) {
-			log.Infof("closed QUIC connection %s", odcid.String())
+			config.Logger.Infof("closed QUIC connection %s", odcid.String())
 		},
 	}))
 
 	if config.Qlog {
 		tracers = append(tracers, internal.NewQlogTracer("client", func(filename string) {
-			log.Infof("created qlog file: %s", filename)
+			config.Logger.Infof("created qlog file: %s", filename)
 		}))
 	}
 
@@ -111,7 +111,7 @@ func Run(config Config) error {
 				atomic.AddInt64(&totalReceivedBytes, receivedBytes)
 				pendingRequests.UpdateState(func(s int) int { return s - 1 })
 				if err != nil {
-					log.Errorf("failed to download %s: %v", url.String(), err)
+					config.Logger.Errorf("failed to download %s: %v", url.String(), err)
 				}
 			}
 		}()
@@ -119,14 +119,14 @@ func Run(config Config) error {
 
 	pendingRequests.Wait(func(s int) bool { return s == 0 })
 
-	log.Infof("total bytes received: %d B", atomic.LoadInt64(&totalReceivedBytes))
+	config.Logger.Infof("total bytes received: %d B", atomic.LoadInt64(&totalReceivedBytes))
 
 	return nil
 }
 
 // return received bytes
 func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, error) {
-	log.Infof("GET %s", url)
+	c.config.Logger.Infof("GET %s", url)
 	start := time.Now()
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
@@ -175,7 +175,7 @@ func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, erro
 		stop = time.Now()
 	}
 
-	log.Infof("got %s %s %d, %d byte, %f s", url, rsp.Proto, rsp.StatusCode, received, stop.Sub(start).Seconds())
+	c.config.Logger.Infof("got %s %s %d, %d byte, %f s", url, rsp.Proto, rsp.StatusCode, received, stop.Sub(start).Seconds())
 
 	for _, requisite := range requisites {
 		absolute := url.ResolveReference(requisite)

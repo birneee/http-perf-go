@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/logging"
-	log "github.com/sirupsen/logrus"
 	"http-perf-go/internal"
 	"net"
 	"net/http"
@@ -19,6 +18,7 @@ type Config struct {
 	ServeDir    string
 	Addr        string
 	Qlog        bool
+	Logger      internal.HierarchicalLogger
 }
 
 func Run(config Config) error {
@@ -43,7 +43,7 @@ func Run(config Config) error {
 	}
 	defer tcpConn.Close()
 
-	log.Infof("listening on %s, serving %s", udpAddr, config.ServeDir)
+	config.Logger.Infof("listening on %s, serving %s", udpAddr, config.ServeDir)
 
 	tlsCert, err := tls.LoadX509KeyPair(config.TlsCertFile, config.TlsKeyFile)
 	if err != nil {
@@ -61,19 +61,19 @@ func Run(config Config) error {
 
 	tracers = append(tracers, internal.NewEventTracer(internal.Handlers{
 		UpdatePath: func(odcid logging.ConnectionID, newRemote net.Addr) {
-			log.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
+			config.Logger.Infof("migrated QUIC connection %s to %s", odcid.String(), newRemote)
 		},
 		StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
-			log.Infof("started QUIC connection %s", odcid.String())
+			config.Logger.Infof("started QUIC connection %s", odcid.String())
 		},
 		ClosedConnection: func(odcid logging.ConnectionID, err error) {
-			log.Infof("closed QUIC connection %s", odcid.String())
+			config.Logger.Infof("closed QUIC connection %s", odcid.String())
 		},
 	}))
 
 	if config.Qlog {
 		tracers = append(tracers, internal.NewQlogTracer("server", func(filename string) {
-			log.Infof("created qlog file: %s", filename)
+			config.Logger.Infof("created qlog file: %s", filename)
 		}))
 	}
 
