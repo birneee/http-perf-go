@@ -21,6 +21,7 @@ const (
 	defaultUserAgent          = "http-perf-go"
 )
 
+// TODO add xse option
 func main() {
 	log.SetFormatter(internal.NewFormatter())
 	app := &cli.App{
