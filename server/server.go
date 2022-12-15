@@ -2,12 +2,14 @@ package server
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/logging"
 	log "github.com/sirupsen/logrus"
 	"http-perf-go/internal"
 	"net"
 	"net/http"
+	"strings"
 )
 import "github.com/lucas-clemente/quic-go/http3"
 
@@ -19,6 +21,10 @@ type Config struct {
 	ServeDir    string
 	Addr        string
 	Qlog        bool
+	MultiDomain bool
+	// serve files with query strings in its filenames.
+	// e.g. wget does put them in the filename
+	QueryStringInFilename bool
 }
 
 func Run(config Config) error {
@@ -82,9 +88,24 @@ func Run(config Config) error {
 		EnableActiveMigration: true,
 	}
 
+	fileServerConfig := internal.FileServerConfig{
+		QueryStringAsPartOfFile: config.QueryStringInFilename,
+	}
+
+	var handler http.Handler
+	if config.MultiDomain {
+		handler, err = internal.NewHostnameDirectoryMultiplexHandler(config.ServeDir, fileServerConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create handler: %v", err)
+		}
+		log.Infof("hostnames: %s", strings.Join(handler.(internal.HostnameDirectoryMultiplexHandler).Hostnames(), ", "))
+	} else {
+		handler = internal.NewFileServer(http.Dir(config.ServeDir), fileServerConfig)
+	}
+
 	// HTTP/3 server
 	quicServer := http3.Server{
-		Handler:    http.FileServer(http.Dir(config.ServeDir)),
+		Handler:    handler,
 		Addr:       config.Addr,
 		QuicConfig: quicConf,
 		TLSConfig:  tlsConf,

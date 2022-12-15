@@ -126,6 +126,11 @@ func main() {
 						Usage: "directory to serve",
 						Value: defaultServeDir,
 					},
+					&cli.BoolFlag{
+						Name:  "multi-domain",
+						Usage: "interpret first level in directory as the domain name",
+						Value: false,
+					},
 					&cli.StringFlag{
 						Name:  "tls-cert",
 						Usage: "TLS certificate file to use",
@@ -141,14 +146,21 @@ func main() {
 						Usage: "create qlog file",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "query-in-filename",
+						Usage: "serve files with query string in filename",
+						Value: false,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					return server.Run(server.Config{
-						Addr:        c.String("addr"),
-						ServeDir:    c.String("dir"),
-						TlsCertFile: c.String("tls-cert"),
-						TlsKeyFile:  c.String("tls-key"),
-						Qlog:        c.Bool("qlog"),
+						Addr:                  c.String("addr"),
+						ServeDir:              c.String("dir"),
+						TlsCertFile:           c.String("tls-cert"),
+						TlsKeyFile:            c.String("tls-key"),
+						Qlog:                  c.Bool("qlog"),
+						MultiDomain:           c.Bool("multi-domain"),
+						QueryStringInFilename: c.Bool("query-in-filename"),
 					})
 				},
 			},
