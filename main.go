@@ -58,6 +58,11 @@ func main() {
 						Name:  "proxy",
 						Usage: "the proxy to use, in the form \"host:port\", default port 18081 if not specified",
 					},
+					&cli.BoolFlag{
+						Name:  "proxy-0rtt",
+						Usage: "gather 0-RTT information to the proxy beforehand",
+						Value: false,
+					},
 					&cli.StringFlag{
 						Name:  "tls-proxy-cert",
 						Usage: "certificate file to trust the proxy",
@@ -91,14 +96,29 @@ func main() {
 							return fmt.Errorf("failed to resolve proxy address: %w", err)
 						}
 						proxyConf.Addr = proxyAddr.String()
+						proxyConf.Config = &quic.Config{
+							TokenStore: quic.NewLRUTokenStore(1, 1),
+						}
 						if c.String("tls-proxy-cert") != "" {
-							proxyConf.TlsConf = &tls.Config{}
+							proxyConf.TlsConf = &tls.Config{
+								NextProtos:         []string{quic.HQUICProxyALPN},
+								ClientSessionCache: tls.NewLRUClientSessionCache(1),
+							}
 							certPool, err := internal.SystemCertPoolWithAdditionalCert(c.String("tls-proxy-cert"))
 							if err != nil {
 								return fmt.Errorf("failed to load proxy certificate: %w", err)
 							}
 							proxyConf.TlsConf.RootCAs = certPool
 						}
+
+						if c.IsSet("proxy-0rtt") {
+							err := internal.PingToGatherSessionTicketAndToken(proxyConf.Addr, proxyConf.TlsConf, proxyConf.Config)
+							if err != nil {
+								panic(fmt.Errorf("failed to prepare 0-RTT to proxy: %w", err))
+							}
+							log.Infof("stored session ticket and address token of proxy for 0-RTT")
+						}
+
 					}
 
 					return client.Run(client.Config{

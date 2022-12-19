@@ -98,6 +98,7 @@ func Run(config Config) error {
 		}
 	}
 
+	firstRequestTime := time.Now()
 	for i := 0; i < config.ParallelRequests; i++ {
 		go func() {
 			for {
@@ -119,7 +120,7 @@ func Run(config Config) error {
 
 	pendingRequests.Wait(func(s int) bool { return s == 0 })
 
-	log.Infof("total bytes received: %d B", atomic.LoadInt64(&totalReceivedBytes))
+	log.Infof("total bytes received: %d B, time: %.3f s", atomic.LoadInt64(&totalReceivedBytes), time.Now().Sub(firstRequestTime).Seconds())
 
 	return nil
 }
