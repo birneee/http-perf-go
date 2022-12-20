@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	u "net/url"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -27,6 +28,7 @@ type Config struct {
 	ParallelRequests int
 	ProxyConfig      *quic.ProxyConfig
 	UserAgent        string
+	UrlBlacklist     []*regexp.Regexp
 }
 
 type client struct {
@@ -103,17 +105,21 @@ func Run(config Config) error {
 		go func() {
 			for {
 				url := urlQueue.Next()
-				receivedBytes, err := client.download(&url, func(url *u.URL) {
-					distinct := urlQueue.Add(*url)
-					if distinct {
-						pendingRequests.UpdateState(func(s int) int { return s + 1 })
+				if client.isUrlIgnored(url) {
+					log.Infof("skip blacklisted url: %s", url.String())
+				} else {
+					receivedBytes, err := client.download(&url, func(url *u.URL) {
+						distinct := urlQueue.Add(*url)
+						if distinct {
+							pendingRequests.UpdateState(func(s int) int { return s + 1 })
+						}
+					})
+					atomic.AddInt64(&totalReceivedBytes, receivedBytes)
+					if err != nil {
+						log.Errorf("failed to download %s: %v", url.String(), err)
 					}
-				})
-				atomic.AddInt64(&totalReceivedBytes, receivedBytes)
-				pendingRequests.UpdateState(func(s int) int { return s - 1 })
-				if err != nil {
-					log.Errorf("failed to download %s: %v", url.String(), err)
 				}
+				pendingRequests.UpdateState(func(s int) int { return s - 1 })
 			}
 		}()
 	}
@@ -184,4 +190,13 @@ func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, erro
 	}
 
 	return received, nil
+}
+
+func (c *client) isUrlIgnored(url u.URL) bool {
+	for _, regex := range c.config.UrlBlacklist {
+		if regex.MatchString(url.String()) {
+			return true
+		}
+	}
+	return false
 }

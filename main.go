@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/tls"
 	"fmt"
 	"github.com/lucas-clemente/quic-go"
@@ -11,6 +12,7 @@ import (
 	"http-perf-go/server"
 	u "net/url"
 	"os"
+	"regexp"
 )
 
 const (
@@ -73,6 +75,10 @@ func main() {
 						Usage:   "Identification of client to the HTTP server",
 						Value:   defaultUserAgent,
 					},
+					&cli.StringFlag{
+						Name:  "url-blacklist",
+						Usage: "file containing regular expressions for urls that will not be requested",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
@@ -118,7 +124,23 @@ func main() {
 							}
 							log.Infof("stored session ticket and address token of proxy for 0-RTT")
 						}
+					}
 
+					urlBlacklist := make([]*regexp.Regexp, 0)
+					if c.IsSet("url-blacklist") {
+						file, err := os.Open(c.String("url-blacklist"))
+						if err != nil {
+							return fmt.Errorf("failed to open url blacklist: %v", err)
+						}
+						defer file.Close()
+						scanner := bufio.NewScanner(file)
+						for scanner.Scan() {
+							expr, err := regexp.Compile(scanner.Text())
+							if err != nil {
+								return fmt.Errorf("failed to compile url blacklist regexp: %v", err)
+							}
+							urlBlacklist = append(urlBlacklist, expr)
+						}
 					}
 
 					return client.Run(client.Config{
@@ -129,6 +151,7 @@ func main() {
 						ParallelRequests: c.Int("parallel"),
 						ProxyConfig:      proxyConf,
 						UserAgent:        c.String("user-agent"),
+						UrlBlacklist:     urlBlacklist,
 					})
 				},
 			},
