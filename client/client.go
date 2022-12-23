@@ -32,8 +32,12 @@ type Config struct {
 }
 
 type client struct {
-	config     *Config
-	httpClient *http.Client
+	config               *Config
+	httpClient           *http.Client
+	totalReceivedBytes   atomic.Int64
+	totalQuicConnections atomic.Uint32
+	totalGetRequests     atomic.Int64
+	totalHttpErrors      atomic.Int64
 }
 
 // Run blocks until everything is downloaded
@@ -41,6 +45,10 @@ func Run(config Config) error {
 	certPool, err := internal.SystemCertPoolWithAdditionalCert(config.TLSCertFile)
 	if err != nil {
 		return err
+	}
+
+	client := &client{
+		config: &config,
 	}
 
 	tlsConf := &tls.Config{
@@ -55,6 +63,7 @@ func Run(config Config) error {
 		},
 		StartedConnection: func(odcid logging.ConnectionID, local, remote net.Addr, srcConnID, destConnID logging.ConnectionID) {
 			log.Infof("started QUIC connection %s", odcid.String())
+			client.totalQuicConnections.Add(1)
 		},
 		ClosedConnection: func(odcid logging.ConnectionID, err error) {
 			log.Infof("closed QUIC connection %s", odcid.String())
@@ -83,15 +92,11 @@ func Run(config Config) error {
 		Transport: roundTripper,
 	}
 
-	client := &client{
-		config:     &config,
-		httpClient: hclient,
-	}
+	client.httpClient = hclient
 
 	urlQueue := internal.NewDistinctChannel[u.URL](1024)
 
 	pendingRequests := internal.NewCondHelper(0)
-	var totalReceivedBytes int64 = 0 /* atomic */
 
 	for _, url := range config.Urls {
 		distinct := urlQueue.Add(*url)
@@ -114,7 +119,7 @@ func Run(config Config) error {
 							pendingRequests.UpdateState(func(s int) int { return s + 1 })
 						}
 					})
-					atomic.AddInt64(&totalReceivedBytes, receivedBytes)
+					client.totalReceivedBytes.Add(receivedBytes)
 					if err != nil {
 						log.Errorf("failed to download %s: %v", url.String(), err)
 					}
@@ -126,13 +131,14 @@ func Run(config Config) error {
 
 	pendingRequests.Wait(func(s int) bool { return s == 0 })
 
-	log.Infof("total bytes received: %d B, time: %.3f s", atomic.LoadInt64(&totalReceivedBytes), time.Now().Sub(firstRequestTime).Seconds())
+	log.Infof("total bytes received: %d B, time: %.3f s, get requests %d, http errors %d, quic connections %d", client.totalReceivedBytes.Load(), time.Now().Sub(firstRequestTime).Seconds(), client.totalGetRequests.Load(), client.totalHttpErrors.Load(), client.totalQuicConnections.Load())
 
 	return nil
 }
 
 // return received bytes
 func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, error) {
+	c.totalGetRequests.Add(1)
 	log.Infof("GET %s", url)
 	start := time.Now()
 	req, err := http.NewRequest("GET", url.String(), nil)
@@ -182,6 +188,9 @@ func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, erro
 		stop = time.Now()
 	}
 
+	if isHttpStatusError(rsp.StatusCode) {
+		c.totalHttpErrors.Add(1)
+	}
 	log.Infof("got %s %s %d, %d byte, %f s", url, rsp.Proto, rsp.StatusCode, received, stop.Sub(start).Seconds())
 
 	for _, requisite := range requisites {
@@ -190,6 +199,10 @@ func (c *client) download(url *u.URL, onFindRequisite func(*u.URL)) (int64, erro
 	}
 
 	return received, nil
+}
+
+func isHttpStatusError(statusCode int) bool {
+	return statusCode < 200 || statusCode >= 300
 }
 
 func (c *client) isUrlIgnored(url u.URL) bool {
