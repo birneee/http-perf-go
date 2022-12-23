@@ -131,7 +131,7 @@ func Run(config Config) error {
 
 	pendingRequests.Wait(func(s int) bool { return s == 0 })
 
-	log.Infof("total bytes received: %d B, time: %.3f s, get requests %d, http errors %d, quic connections %d", client.totalReceivedBytes.Load(), time.Now().Sub(firstRequestTime).Seconds(), client.totalGetRequests.Load(), client.totalHttpErrors.Load(), client.totalQuicConnections.Load())
+	log.Infof("total bytes received: %d B, time: %.3f s, get requests: %d, http errors: %d, quic connections: %d", client.totalReceivedBytes.Load(), time.Now().Sub(firstRequestTime).Seconds(), client.totalGetRequests.Load(), client.totalHttpErrors.Load(), client.totalQuicConnections.Load())
 
 	return nil
 }
