@@ -21,14 +21,15 @@ import (
 
 // TODO 0rtt
 type Config struct {
-	Urls             []*u.URL
-	TLSCertFile      string
-	Qlog             bool
-	PageRequisites   bool
-	ParallelRequests int
-	ProxyConfig      *quic.ProxyConfig
-	UserAgent        string
-	UrlBlacklist     []*regexp.Regexp
+	Urls               []*u.URL
+	TLSCertFile        string
+	Qlog               bool
+	PageRequisites     bool
+	ParallelRequests   int
+	ProxyConfig        *quic.ProxyConfig
+	AllowEarlyHandover bool
+	UserAgent          string
+	UrlBlacklist       []*regexp.Regexp
 }
 
 type client struct {
@@ -80,6 +81,7 @@ func Run(config Config) error {
 		Tracer:                logging.NewMultiplexedTracer(tracers...),
 		ProxyConf:             config.ProxyConfig,
 		EnableActiveMigration: true,
+		AllowEarlyHandover:    config.AllowEarlyHandover,
 	}
 
 	roundTripper := &http3.RoundTripper{

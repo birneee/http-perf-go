@@ -65,6 +65,11 @@ func main() {
 						Usage: "gather 0-RTT information to the proxy beforehand",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "early-handover",
+						Usage: "allow creating H-QUIC state earlier, when handshake is completed but not yet confirmed. Optimistic approach! Success is not guaranteed due to race conditions.",
+						Value: false,
+					},
 					&cli.StringFlag{
 						Name:  "tls-proxy-cert",
 						Usage: "certificate file to trust the proxy",
@@ -144,14 +149,15 @@ func main() {
 					}
 
 					return client.Run(client.Config{
-						Urls:             urls,
-						TLSCertFile:      c.String("tls-cert"),
-						Qlog:             c.Bool("qlog"),
-						PageRequisites:   c.Bool("page-requisites"),
-						ParallelRequests: c.Int("parallel"),
-						ProxyConfig:      proxyConf,
-						UserAgent:        c.String("user-agent"),
-						UrlBlacklist:     urlBlacklist,
+						Urls:               urls,
+						TLSCertFile:        c.String("tls-cert"),
+						Qlog:               c.Bool("qlog"),
+						PageRequisites:     c.Bool("page-requisites"),
+						ParallelRequests:   c.Int("parallel"),
+						ProxyConfig:        proxyConf,
+						AllowEarlyHandover: c.Bool("early-handover"),
+						UserAgent:          c.String("user-agent"),
+						UrlBlacklist:       urlBlacklist,
 					})
 				},
 			},
