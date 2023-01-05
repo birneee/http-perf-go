@@ -21,6 +21,7 @@ type Config struct {
 	ServeDir    string
 	Addr        string
 	Qlog        bool
+	QlogPrefix  string
 	MultiDomain bool
 	// serve files with query strings in its filenames.
 	// e.g. wget does put them in the filename
@@ -78,7 +79,7 @@ func Run(config Config) error {
 	}))
 
 	if config.Qlog {
-		tracers = append(tracers, internal.NewQlogTracer("server", func(filename string) {
+		tracers = append(tracers, internal.NewQlogTracer(config.QlogPrefix, func(filename string) {
 			log.Infof("created qlog file: %s", filename)
 		}))
 	}
@@ -86,6 +87,7 @@ func Run(config Config) error {
 	quicConf := &quic.Config{
 		Tracer:                logging.NewMultiplexedTracer(tracers...),
 		EnableActiveMigration: true,
+		ExtraStreamEncryption: quic.PreferExtraStreamEncryption,
 	}
 
 	fileServerConfig := internal.FileServerConfig{

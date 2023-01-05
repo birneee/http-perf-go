@@ -84,6 +84,16 @@ func main() {
 						Name:  "url-blacklist",
 						Usage: "file containing regular expressions for urls that will not be requested",
 					},
+					&cli.BoolFlag{
+						Name:  "xse",
+						Usage: "use XSE-QUIC extension; handshake will fail if not supported by server",
+						Value: false,
+					},
+					&cli.StringFlag{
+						Name:  "qlog-prefix",
+						Usage: "the prefix of the qlog file name",
+						Value: "client",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if c.Args().Len() == 0 {
@@ -149,15 +159,17 @@ func main() {
 					}
 
 					return client.Run(client.Config{
-						Urls:               urls,
-						TLSCertFile:        c.String("tls-cert"),
-						Qlog:               c.Bool("qlog"),
-						PageRequisites:     c.Bool("page-requisites"),
-						ParallelRequests:   c.Int("parallel"),
-						ProxyConfig:        proxyConf,
-						AllowEarlyHandover: c.Bool("early-handover"),
-						UserAgent:          c.String("user-agent"),
-						UrlBlacklist:       urlBlacklist,
+						Urls:                  urls,
+						TLSCertFile:           c.String("tls-cert"),
+						Qlog:                  c.Bool("qlog"),
+						QlogPrefix:            c.String("qlog-prefix"),
+						PageRequisites:        c.Bool("page-requisites"),
+						ParallelRequests:      c.Int("parallel"),
+						ProxyConfig:           proxyConf,
+						AllowEarlyHandover:    c.Bool("early-handover"),
+						ExtraStreamEncryption: c.Bool("xse"),
+						UserAgent:             c.String("user-agent"),
+						UrlBlacklist:          urlBlacklist,
 					})
 				},
 			},
@@ -200,6 +212,11 @@ func main() {
 						Usage: "serve files with query string in filename",
 						Value: false,
 					},
+					&cli.StringFlag{
+						Name:  "qlog-prefix",
+						Usage: "the prefix of the qlog file name",
+						Value: "server",
+					},
 				},
 				Action: func(c *cli.Context) error {
 					return server.Run(server.Config{
@@ -208,6 +225,7 @@ func main() {
 						TlsCertFile:           c.String("tls-cert"),
 						TlsKeyFile:            c.String("tls-key"),
 						Qlog:                  c.Bool("qlog"),
+						QlogPrefix:            c.String("qlog-prefix"),
 						MultiDomain:           c.Bool("multi-domain"),
 						QueryStringInFilename: c.Bool("query-in-filename"),
 					})

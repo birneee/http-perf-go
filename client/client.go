@@ -21,15 +21,17 @@ import (
 
 // TODO 0rtt
 type Config struct {
-	Urls               []*u.URL
-	TLSCertFile        string
-	Qlog               bool
-	PageRequisites     bool
-	ParallelRequests   int
-	ProxyConfig        *quic.ProxyConfig
-	AllowEarlyHandover bool
-	UserAgent          string
-	UrlBlacklist       []*regexp.Regexp
+	Urls                  []*u.URL
+	TLSCertFile           string
+	Qlog                  bool
+	QlogPrefix            string
+	PageRequisites        bool
+	ParallelRequests      int
+	ProxyConfig           *quic.ProxyConfig
+	AllowEarlyHandover    bool
+	ExtraStreamEncryption bool
+	UserAgent             string
+	UrlBlacklist          []*regexp.Regexp
 }
 
 type client struct {
@@ -72,7 +74,7 @@ func Run(config Config) error {
 	}))
 
 	if config.Qlog {
-		tracers = append(tracers, internal.NewQlogTracer("client", func(filename string) {
+		tracers = append(tracers, internal.NewQlogTracer(config.QlogPrefix, func(filename string) {
 			log.Infof("created qlog file: %s", filename)
 		}))
 	}
@@ -82,6 +84,12 @@ func Run(config Config) error {
 		ProxyConf:             config.ProxyConfig,
 		EnableActiveMigration: true,
 		AllowEarlyHandover:    config.AllowEarlyHandover,
+	}
+
+	if config.ExtraStreamEncryption {
+		quicConf.ExtraStreamEncryption = quic.EnforceExtraStreamEncryption
+	} else {
+		quicConf.ExtraStreamEncryption = quic.DisableExtraStreamEncryption
 	}
 
 	roundTripper := &http3.RoundTripper{
